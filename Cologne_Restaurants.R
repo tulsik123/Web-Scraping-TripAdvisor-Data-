@@ -1,16 +1,16 @@
-
-
 library(rvest)
-
+#parse html search result (here: restaurants in Cologne)
 page0_url<-read_html ("https://www.tripadvisor.com/Restaurants-g187371-Cologne_North_Rhine_Westphalia.html")
 
-pages_bottom<-page0_url%>% 
+#find the the lnumber of the last page listed in the bottom
+npages<-page0_url%>% 
         html_nodes(" .pageNum ") %>% 
-        html_attr(name="data-page-number")
-        
+        html_attr(name="data-page-number") %>%
+        tail(.,1) %>%
+        as.numeric()
 
-npages=tail(pages_bottom,1)
-
+npages=1
+#create an empty matrix
 dat<-matrix(nrow=30*npages,ncol=2)
 offset=0
 idx_s=0
@@ -47,4 +47,11 @@ for (i in 1:npages)
         offset<-offset+30      
 }
 
+#Remove NA values
 dat<-na.omit(dat)
+
+#Convert the matrix into a dataframe
+dat<-data.frame(dat,stringsAsFactors = F)
+
+#Change the names of the data frame columns
+names(dat)<-c("Name","url")
