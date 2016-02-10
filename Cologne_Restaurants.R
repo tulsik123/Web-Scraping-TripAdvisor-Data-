@@ -1,4 +1,5 @@
 library(rvest)
+
 #parse html search result (here: restaurants in Cologne)
 page0_url<-read_html ("https://www.tripadvisor.com/Restaurants-g187371-Cologne_North_Rhine_Westphalia.html")
 
@@ -9,15 +10,15 @@ npages<-page0_url%>%
         tail(.,1) %>%
         as.numeric()
 
-npages=1
 #create an empty matrix
 dat<-matrix(nrow=30*npages,ncol=2)
-offset=0
-idx_s=0
+
+offset=0 #offset of page url
+idx_s=0 #start index of the entries in the matrix
 
 for (i in 1:npages)
 {
-        #chabge page url in every interation to go to the next page 
+        #change page url in every interation to go to the next page 
         page_url<-paste("https://www.tripadvisor.com/Restaurants-g187371-oa",offset,
                         "-Cologne_North_Rhine_Westphalia.html#EATERY_LIST_CONTENTS",sep="")
         #parse HTML page
@@ -29,18 +30,21 @@ for (i in 1:npages)
                 html_text() %>%
                 gsub('[\r\n\t]', '', .)
         
-        R_inpage<-length( R_names)
-        
+        #get the links of the restaurants in the page
         R_url<-link %>% 
                 html_nodes(".shortSellDetails h3 a") %>% 
                 html_attr(name="href")
-        
+
         R_url<-paste("https://www.tripadvisor.com",R_url,sep="")
         
+        #get the number of restaurants in the page
+        R_count<-length( R_names)
         
-        dat[(idx_s+1):(idx_s+length(R_names)),1]<-R_names
-        dat[(idx_s+1):(idx_s+length(R_names)),2]<-R_url
+        #add restaurant names and url to the matrix
+        dat[(idx_s+1):(idx_s+R_count),1]<-R_names
+        dat[(idx_s+1):(idx_s+R_count),2]<-R_url
         
+        #incrementthe start index
         idx_s=idx_s+length(R_names)
         
         #increment the offset to refer to the next page
@@ -55,3 +59,6 @@ dat<-data.frame(dat,stringsAsFactors = F)
 
 #Change the names of the data frame columns
 names(dat)<-c("Name","url")
+
+#Write data frame to a CSV file
+write.table(dat,file="Cologne_Rest.csv",sep=",",row.names = F)
