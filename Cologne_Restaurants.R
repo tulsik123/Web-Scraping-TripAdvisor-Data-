@@ -13,8 +13,13 @@ npages<-page0_url%>%
 #create an empty matrix
 dat<-matrix(nrow=30*npages,ncol=2)
 
+Restaurant_Name<-vector(mode="character", length=30*npages)
+Restaurant_URL<-vector(mode="character", length=30*npages)
+
+
 offset=0 #offset of page url
 idx_s=0 #start index of the entries in the matrix
+
 
 for (i in 1:npages)
 {
@@ -41,10 +46,14 @@ for (i in 1:npages)
         R_count<-length( R_names)
         
         #add restaurant names and url to the matrix
-        dat[(idx_s+1):(idx_s+R_count),1]<-R_names
-        dat[(idx_s+1):(idx_s+R_count),2]<-R_url
+        # dat[(idx_s+1):(idx_s+R_count),1]<-R_names
+        # dat[(idx_s+1):(idx_s+R_count),2]<-R_url
+
         
-        #incrementthe start index
+        Restaurant_Name[(idx_s+1):(idx_s+R_count)]<-R_names
+        Restaurant_URL[(idx_s+1):(idx_s+R_count)]<-R_url
+        
+        #increment the start index
         idx_s=idx_s+length(R_names)
         
         #increment the offset to refer to the next page
@@ -52,7 +61,10 @@ for (i in 1:npages)
 }
 
 #Remove NA values
-dat<-na.omit(dat)
+# dat<-na.omit(dat)
+
+Restaurant_Name<-na.omit(Restaurant_Name)
+Restaurant_URL<-na.omit(Restaurant_URL)
 
 #Convert the matrix into a dataframe
 dat<-data.frame(dat,stringsAsFactors = F)
@@ -74,20 +86,23 @@ NearByURL<-vector(mode="list", length=len)
 
 for(i in 1:3)
 {
-        rest_url<-dat[i,2] 
+        rest_url<-Restaurant_URL[i]
         #parse HTML page
         rest_cont<-read_html(rest_url)
         
         #get number of reviews
+        
         Reviews[i]<-rest_cont %>% 
                 html_nodes("#TABS_REVIEWS .tabs_pers_counts") %>% 
                 html_text() %>%
-                gsub('[(/)]',"",.)
+                gsub('[(/)]',"",.) %>%
+                as.numeric()
         
         #Stars
         Stars[i]<-rest_cont %>%
                 html_nodes(".rr45") %>%
-                html_attr("content")
+                html_attr("content") %>%
+                as.numeric()
         
         
         #cuisine
@@ -100,7 +115,8 @@ for(i in 1:3)
         Photos[i]<-rest_cont %>%
                 html_nodes("div.count")%>%
                 html_text()%>%
-                gsub('[(/)]',"",.)
+                gsub('[(/)]',"",.) %>%
+                as.numeric()
         
         
         #nearby url of rest and attractions
@@ -121,7 +137,15 @@ for(i in 1:3)
         NearByURL[[i]]<-paste("http://www.tripadvisor.com",nearBy_url[ix],sep="")
 }
 
-dat<-data.frame(cbind(dat$Name,dat$url,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL))
+dat<-cbind.data.frame(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL,stringsAsFactors=F)
+
+
+ff<-data.frame(as.matrix(cbind(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL)))
+
+ff<-data.frame(as.matrix(cbind(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos)),stringsAsFactors=F)
+
 
 #Write data frame to a CSV file
-write.table(dat,file="Cologne_Rest.csv",sep=",",row.names = F)
+write.table(ff,file="Cologne_Rest_test.csv",sep=",",row.names = F)
+
+
