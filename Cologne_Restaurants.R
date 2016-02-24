@@ -60,5 +60,68 @@ dat<-data.frame(dat,stringsAsFactors = F)
 #Change the names of the data frame columns
 names(dat)<-c("Name","url")
 
+
+len=dim(dat)[1]
+
+Reviews<-vector(mode="numeric", length=len)
+Stars<-vector(mode="numeric", length=len)
+Cuisine<-vector(mode="list", length=len)
+Photos<-vector(mode="numeric", length=len)
+NearBy<-vector(mode="list", length=len)
+NearByURL<-vector(mode="list", length=len)
+
+
+
+for(i in 1:3)
+{
+        rest_url<-dat[i,2] 
+        #parse HTML page
+        rest_cont<-read_html(rest_url)
+        
+        #get number of reviews
+        Reviews[i]<-rest_cont %>% 
+                html_nodes("#TABS_REVIEWS .tabs_pers_counts") %>% 
+                html_text() %>%
+                gsub('[(/)]',"",.)
+        
+        #Stars
+        Stars[i]<-rest_cont %>%
+                html_nodes(".rr45") %>%
+                html_attr("content")
+        
+        
+        #cuisine
+        Cuisine[[i]]<-rest_cont %>%
+                html_nodes("div.detail.separator a") %>%
+                html_text() %>%
+                gsub('[\r\n\t]', '', .)
+        
+        #photos
+        Photos[i]<-rest_cont %>%
+                html_nodes("div.count")%>%
+                html_text()%>%
+                gsub('[(/)]',"",.)
+        
+        
+        #nearby url of rest and attractions
+        nearBy_url<-rest_cont %>%
+                html_nodes(".nameWrapper a ")%>%
+                html_attr(name="href")
+        
+        #index of nearby rest
+        ix<-grep("Restaurant",nearBy_url)
+        
+        
+        NearBy[[i]]<-rest_cont %>%
+                html_nodes(".nameWrapper")%>%
+                html_text() %>%
+                gsub('[\r\n\t]', '', .) %>%
+                .[ix]
+        #url of nearby rest a
+        NearByURL[[i]]<-paste("http://www.tripadvisor.com",nearBy_url[ix],sep="")
+}
+
+dat<-data.frame(cbind(dat$Name,dat$url,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL))
+
 #Write data frame to a CSV file
 write.table(dat,file="Cologne_Rest.csv",sep=",",row.names = F)
