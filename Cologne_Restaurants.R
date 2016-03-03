@@ -1,31 +1,26 @@
 library(rvest)
 
-setwd("G:/MOOC_Courses/tut_DataScience/Web Scrapping/TripAdvisor/Cologne_Restaurants")
+# setwd("G:/MOOC_Courses/tut_DataScience/Web Scrapping/TripAdvisor/Cologne_Restaurants")
 
 #parse html search result (here: restaurants in Cologne)
 page0_url<-read_html ("https://www.tripadvisor.com/Restaurants-g187371-Cologne_North_Rhine_Westphalia11.html")
 
-# find the the lnumber of the last page listed in the bottom
+# find the the lnumber of the last page listed in the bottom of the main page
 npages<-page0_url%>% 
         html_nodes(" .pageNum ") %>% 
         html_attr(name="data-page-number") %>%
         tail(.,1) %>%
         as.numeric()
 
-#create an empty matrix
-dat<-matrix(nrow=30*npages,ncol=2)
-
 Restaurant_Name<-vector(mode="character", length=30*npages)
 Restaurant_URL<-vector(mode="character", length=30*npages)
 
-
 offset=0 #offset of page url
-idx_s=0 #start index of the entries in the matrix
-
+idx_s=0 #start index of the entries in the vectors
 
 for (i in 1:npages)
 {
-        #change page url in every interation to go to the next page 
+        #change page url in every iteration to go to the next page 
         page_url<-paste("https://www.tripadvisor.com/Restaurants-g187371-oa",offset,
                         "-Cologne_North_Rhine_Westphalia.html#EATERY_LIST_CONTENTS",sep="")
         #parse HTML page
@@ -57,21 +52,14 @@ for (i in 1:npages)
         offset<-offset+30      
 }
 
-#Remove NA values
-# dat<-na.omit(dat)
-
+#remove empty values
 Restaurant_Name<-Restaurant_Name [Restaurant_Name!=""]
 Restaurant_URL<-Restaurant_URL[Restaurant_URL!=""]
 
-#Convert the matrix into a dataframe
-dat<-data.frame(dat,stringsAsFactors = F)
-
-#Change the names of the data frame columns
-# names(dat)<-c("Name","url")
-# len=dim(dat)[1]
-
+#get the total number of restaurants
 len=length(Restaurant_Name)
 
+#create vectors to fill with the scarapped values 
 Reviews<-vector(mode="numeric", length=len)
 Stars<-vector(mode="numeric", length=len)
 Cuisine<-vector(mode="list", length=len)
@@ -80,45 +68,47 @@ NearBy<-vector(mode="list", length=len)
 NearByURL<-vector(mode="list", length=len)
 
 
-
+#loop (len) times
 for(i in 1:len)
 {
+        #read restaurant URL
         rest_url<-Restaurant_URL[i]
         #parse HTML page
         rest_cont<-read_html(rest_url)
-        
-        print(rest_url)
-        print(i)
-        #get number of reviews
-        
+
+        ####REVIEWS####
+        #get the html_nodes corresponding to the reviews
         reviews_nodes<-rest_cont %>% 
                 html_nodes("#TABS_REVIEWS .tabs_pers_counts")
         
+        #check if the html_nodes is not empty, get the html text and convert to numeric
         Reviews[i]<- ifelse(length(reviews_nodes)!=0,
                             reviews_nodes%>% 
-                html_text() %>%
-                gsub('[(/)]',"",.) %>%
-                as.numeric(),
-                NA
+                                    html_text() %>%
+                                    gsub('[(/)]',"",.) %>%
+                                    as.numeric(),
+                         NA
                  )
 
-        
+        ####STARS####
+        #get the html_nodes corresponding to stars
         stars_nodes<-rest_cont %>%
                 html_nodes(".rating_rr_fill")
         
+        #check if the html_nodes is not empty, get the content and convert to numeric
         Stars[i]<- ifelse(length(stars_nodes)!=0,
                           stars_nodes %>% 
                                   html_attr("content") %>%
                                   as.numeric(),
                           NA
                           )
-                
 
-        
-        #cuisine
+        ####CUISINE####
+        #get the html_nodes corresponding to cuisine
         cuisine_nodes<-rest_cont %>%
                 html_nodes("div.detail.separator a")
         
+        ##check if the html_nodes is not empty, get the html text
         if(length(cuisine_nodes)!=0) 
         {
                 Cuisine[[i]]<- cuisine_nodes %>%
@@ -130,10 +120,12 @@ for(i in 1:len)
                 Cuisine[[i]] <-NA    
         }
         
-        #photos
+        ####PHOTOS####
+        #get the html_nodes corresponding to photos
         photos_nodes<-rest_cont %>%
                 html_nodes("div.count")
         
+        ##check if the html_nodes is not empty, get the content and convert to numeric
         Photos[i]<-ifelse(length(photos_nodes)!=0,
                           photos_nodes%>%
                                   html_text()%>%
@@ -143,31 +135,33 @@ for(i in 1:len)
                           )
         
         
-        #nearby url of rest and attractions
+        ####EARBY RESTAURANTS####
+        #getnearby url of rest and attractions
         nearBy_url<-rest_cont %>%
                 html_nodes(".nameWrapper a ")%>%
                 html_attr(name="href")
         
-        #index of nearby rest
+        #get index of nearby rest
         ix<-grep("Restaurant",nearBy_url)
         
-        
+        #get the names of the nearby restaurants
         NearBy[[i]]<-rest_cont %>%
                 html_nodes(".nameWrapper")%>%
                 html_text() %>%
                 gsub('[\r\n\t]', '', .) %>%
                 .[ix]
-        #url of nearby rest a
+        
+        #get the URL of the nearby restaurants
         NearByURL[[i]]<-paste("http://www.tripadvisor.com",nearBy_url[ix],sep="")
 }
 
 # dat<-cbind.data.frame(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL,stringsAsFactors=F)
-
-
 # ff<-data.frame(as.matrix(cbind(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL)))
 
+#create a data frame to from the vectors filled in the previous loop
 ff<-data.frame(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,stringsAsFactors=F)
 
+#save in RDs file
 save(ff,file="Cologne_Rest.Rds")
 
 #Write data frame to a CSV file
