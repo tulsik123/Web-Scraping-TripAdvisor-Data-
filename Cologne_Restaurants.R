@@ -1,7 +1,5 @@
 library(rvest)
 
-# setwd("G:/MOOC_Courses/tut_DataScience/Web Scrapping/TripAdvisor/Cologne_Restaurants")
-
 #parse html search result (here: restaurants in Cologne)
 page0_url<-read_html ("https://www.tripadvisor.com/Restaurants-g187371-Cologne_North_Rhine_Westphalia11.html")
 
