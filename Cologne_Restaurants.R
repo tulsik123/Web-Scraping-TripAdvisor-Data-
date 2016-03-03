@@ -1,9 +1,11 @@
 library(rvest)
 
-#parse html search result (here: restaurants in Cologne)
-page0_url<-read_html ("https://www.tripadvisor.com/Restaurants-g187371-Cologne_North_Rhine_Westphalia.html")
+setwd("G:/MOOC_Courses/tut_DataScience/Web Scrapping/TripAdvisor/Cologne_Restaurants")
 
-#find the the lnumber of the last page listed in the bottom
+#parse html search result (here: restaurants in Cologne)
+page0_url<-read_html ("https://www.tripadvisor.com/Restaurants-g187371-Cologne_North_Rhine_Westphalia11.html")
+
+# find the the lnumber of the last page listed in the bottom
 npages<-page0_url%>% 
         html_nodes(" .pageNum ") %>% 
         html_attr(name="data-page-number") %>%
@@ -45,11 +47,6 @@ for (i in 1:npages)
         #get the number of restaurants in the page
         R_count<-length( R_names)
         
-        #add restaurant names and url to the matrix
-        # dat[(idx_s+1):(idx_s+R_count),1]<-R_names
-        # dat[(idx_s+1):(idx_s+R_count),2]<-R_url
-
-        
         Restaurant_Name[(idx_s+1):(idx_s+R_count)]<-R_names
         Restaurant_URL[(idx_s+1):(idx_s+R_count)]<-R_url
         
@@ -63,17 +60,17 @@ for (i in 1:npages)
 #Remove NA values
 # dat<-na.omit(dat)
 
-Restaurant_Name<-na.omit(Restaurant_Name)
-Restaurant_URL<-na.omit(Restaurant_URL)
+Restaurant_Name<-Restaurant_Name [Restaurant_Name!=""]
+Restaurant_URL<-Restaurant_URL[Restaurant_URL!=""]
 
 #Convert the matrix into a dataframe
 dat<-data.frame(dat,stringsAsFactors = F)
 
 #Change the names of the data frame columns
-names(dat)<-c("Name","url")
+# names(dat)<-c("Name","url")
+# len=dim(dat)[1]
 
-
-len=dim(dat)[1]
+len=length(Restaurant_Name)
 
 Reviews<-vector(mode="numeric", length=len)
 Stars<-vector(mode="numeric", length=len)
@@ -84,39 +81,66 @@ NearByURL<-vector(mode="list", length=len)
 
 
 
-for(i in 1:3)
+for(i in 1:len)
 {
         rest_url<-Restaurant_URL[i]
         #parse HTML page
         rest_cont<-read_html(rest_url)
         
+        print(rest_url)
+        print(i)
         #get number of reviews
         
-        Reviews[i]<-rest_cont %>% 
-                html_nodes("#TABS_REVIEWS .tabs_pers_counts") %>% 
+        reviews_nodes<-rest_cont %>% 
+                html_nodes("#TABS_REVIEWS .tabs_pers_counts")
+        
+        Reviews[i]<- ifelse(length(reviews_nodes)!=0,
+                            reviews_nodes%>% 
                 html_text() %>%
                 gsub('[(/)]',"",.) %>%
-                as.numeric()
+                as.numeric(),
+                NA
+                 )
+
         
-        #Stars
-        Stars[i]<-rest_cont %>%
-                html_nodes(".rr45") %>%
-                html_attr("content") %>%
-                as.numeric()
+        stars_nodes<-rest_cont %>%
+                html_nodes(".rating_rr_fill")
         
+        Stars[i]<- ifelse(length(stars_nodes)!=0,
+                          stars_nodes %>% 
+                                  html_attr("content") %>%
+                                  as.numeric(),
+                          NA
+                          )
+                
+
         
         #cuisine
-        Cuisine[[i]]<-rest_cont %>%
-                html_nodes("div.detail.separator a") %>%
-                html_text() %>%
-                gsub('[\r\n\t]', '', .)
+        cuisine_nodes<-rest_cont %>%
+                html_nodes("div.detail.separator a")
+        
+        if(length(cuisine_nodes)!=0) 
+        {
+                Cuisine[[i]]<- cuisine_nodes %>%
+                        html_text() %>%
+                        gsub('[\r\n\t]', '', .)
+        }
+        else
+        {
+                Cuisine[[i]] <-NA    
+        }
         
         #photos
-        Photos[i]<-rest_cont %>%
-                html_nodes("div.count")%>%
-                html_text()%>%
-                gsub('[(/)]',"",.) %>%
-                as.numeric()
+        photos_nodes<-rest_cont %>%
+                html_nodes("div.count")
+        
+        Photos[i]<-ifelse(length(photos_nodes)!=0,
+                          photos_nodes%>%
+                                  html_text()%>%
+                                  gsub('[(/)]',"",.) %>%
+                                  as.numeric(),
+                          0
+                          )
         
         
         #nearby url of rest and attractions
@@ -137,15 +161,16 @@ for(i in 1:3)
         NearByURL[[i]]<-paste("http://www.tripadvisor.com",nearBy_url[ix],sep="")
 }
 
-dat<-cbind.data.frame(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL,stringsAsFactors=F)
+# dat<-cbind.data.frame(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL,stringsAsFactors=F)
 
 
-ff<-data.frame(as.matrix(cbind(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL)))
+# ff<-data.frame(as.matrix(cbind(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,Cuisine,NearBy,NearByURL)))
 
-ff<-data.frame(as.matrix(cbind(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos)),stringsAsFactors=F)
+ff<-data.frame(Restaurant_Name,Restaurant_URL,Reviews,Stars,Photos,stringsAsFactors=F)
 
+save(ff,file="Cologne_Rest.Rds")
 
 #Write data frame to a CSV file
-write.table(ff,file="Cologne_Rest_test.csv",sep=",",row.names = F)
+write.table(ff,file="Cologne_Rest_test2.csv",sep=",",row.names = F)
 
 
