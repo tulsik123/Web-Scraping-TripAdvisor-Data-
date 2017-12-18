@@ -1,7 +1,7 @@
 library(rvest)
 
 #parse html search result (here: restaurants in Cologne)
-page0_url<-read_html ("https://www.tripadvisor.com/Restaurants-g187371-Cologne_North_Rhine_Westphalia11.html")
+page0_url<-read_html ("https://www.tripadvisor.in/Restaurants-g59696-Belgium_Wisconsin.html")
 
 # find the the lnumber of the last page listed in the bottom of the main page
 npages<-page0_url%>% 
@@ -11,6 +11,8 @@ npages<-page0_url%>%
         as.numeric()
 
 Restaurant_Name<-vector(mode="character", length=30*npages)
+Restaurant_Address<-vector(mode="character", length=100*npages)
+Restaurant_Contact<-vector(mode="character", length=30*npages)
 Restaurant_URL<-vector(mode="character", length=30*npages)
 
 offset=0 #offset of page url
